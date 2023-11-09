@@ -1,0 +1,18 @@
+- hosts: localhost
+  connection: local
+  gather_facts: False
+  tasks:
+    - name: sample ec2 key
+      amazon.aws.ec2_key:
+        name: my_keypair
+        region: eu-central-1
+      register: keyout_var
+
+    - debug:
+        var: keyout_var
+
+    - name: store key-pair in pem file
+      copy:
+        content: "{{keyout_var.key.private_key}}"
+        dest: ./my_keypair.pem
+      when: keyout_var.changed

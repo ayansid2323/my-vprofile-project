@@ -1,0 +1,64 @@
+---
+- name: Setup Vprofile bastion host
+  hosts: localhost
+  connection: local
+  gather_facts: False
+  tasks:
+    - name: Import Bastion Variables
+      include_vars: vars/bastion-setup-variables
+
+    - name: import VPC setup Variables
+      include_vars: vars/output_vars
+
+    - name: bastion ec2 key
+      amazon.aws.ec2_key:
+        name: bastion_keypair
+        region: eu-central-1
+      register: key_out
+
+    - name: store key-pair in pem file
+      ansible.builtin.copy:
+        content: "{{key_out.key.private_key}}"
+        dest: ./bastion_keypair.pem
+        mode: 0600
+      when: key_out.changed
+
+    - name: Create a security group for bastion host
+      amazon.aws.ec2_security_group:
+        name: bastion-host-SG
+        description: Allow SSH from my everywhere and all port within SG
+        region: "{{region}}"
+        vpc_id: "{{vpcid}}"
+        rules:
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: "{{MYIP}}"
+            rule_desc: allow ssh from my IP
+        tags:
+          Name: BastionSG
+      register: BastionSG_out
+
+    - debug:
+        var: BastionSG_out
+
+    - name: Creating Bastion host
+      amazon.aws.ec2_instance:
+        name: "vprofile-BastionHOST"
+        region: "{{region}}"
+        instance_type: t2.micro
+        image_id: "{{bastion_ami}}"
+        key_name: bastion_keypair
+        security_group: "{{BastionSG_out.group_id}}"
+        vpc_subnet_id: "{{pubsub1id}}"
+        wait: yes
+        wait_timeout: 240
+        tags:
+          Name: Vprofile-Bastion
+          Project: Vprofile
+          Owner: DevOps-Team
+        exact_count: 1
+      register: bastionHost_out
+
+    - debug:
+        var: bastionHost_out
