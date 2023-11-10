@@ -1,0 +1,260 @@
+---
+- name: Setup Vprofile Stack
+  hosts: localhost
+  connection: local
+  gather_facts: False
+  tasks:
+    - name: Import VproStackSetup Variables
+      include_vars: vars/vprostacksetup_vars
+
+    - name: Import VPC Variables
+      include_vars: vars/vpc-output_vars
+
+    - name: Create Vprofile EC2 key
+      amazon.aws.ec2_key:
+        name: vprokey
+        region: "{{region}}"
+      register: vprokey_out
+
+    - name: Store Private Key into a PEM File as vprokey.pem
+      ansible.builtin.copy:
+        content: "{{vprokey_out.key.private_key}}"
+        dest: "./vprokey.pem"
+        mode: 0600
+      when: vprokey_out.changed
+
+    - name: create security group for load balancer
+      amazon.aws.ec2_security_group:
+        name: vproELB-sg
+        description: vprofile-loadbalancer
+        region: "{{region}}"
+        vpc_id: "{{vpcid}}"
+        tags:
+          Name: vproELB-sg
+        rules:
+          - proto: tcp
+            from_port: 80
+            to_port: 80
+            cidr_ip: 0.0.0.0/0
+            rule_desc: allow all traffic on port 80
+      register: vproELBSG_out
+
+    # - debug:
+    #     var: vproELBSG_out
+
+    - name: create security group for vprofile stack
+      amazon.aws.ec2_security_group:
+        name: vproStack-sg
+        description: vprofile-stack
+        region: "{{region}}"
+        vpc_id: "{{vpcid}}"
+        purge_rules: false
+        tags:
+          Name: vproStack-sg
+        rules:
+          - proto: tcp
+            from_port: 80
+            to_port: 80
+            group_id: "{{vproELBSG_out.group_id}}"
+            rule_desc: allow traffic from load-balancer on port 80
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            group_id: "{{BastionSGid}}"
+            rule_desc: allow ssh from bastionhost on port 22
+      register: vproStackSG_out
+
+    - name: Update Security group to allow internal communication
+      amazon.aws.ec2_security_group:
+        name: vproStack-sg
+        description: vprofile-stack
+        region: "{{region}}"
+        vpc_id: "{{vpcid}}"
+        purge_rules: false
+        tags:
+          Name: vproStack-sg
+        rules:
+          - proto: all
+            group_id: "{{vproStackSG_out.group_id}}"
+            rule_desc: allow traffic within the SG
+
+    - name: Creating Nginx web01
+      amazon.aws.ec2_instance:
+        name: "web01"
+        region: "{{region}}"
+        instance_type: t2.micro
+        image_id: "{{nginx_ami}}"
+        key_name: vprokey
+        security_group: "{{vproStackSG_out.group_id}}"
+        vpc_subnet_id: "{{privsub1id}}"
+        wait: yes
+        wait_timeout: 240
+        tags:
+          Name: web01
+          Project: Vprofile
+          Owner: DevOps-Team
+        exact_count: 1
+      register: web01_out
+
+    - debug:
+        var: web01_out
+
+    - name: Creating Tomcat app01
+      amazon.aws.ec2_instance:
+        name: "app01"
+        region: "{{region}}"
+        instance_type: t2.micro
+        image_id: "{{tomcat_ami}}"
+        key_name: vprokey
+        security_group: "{{vproStackSG_out.group_id}}"
+        vpc_subnet_id: "{{privsub1id}}"
+        wait: yes
+        wait_timeout: 240
+        tags:
+          Name: app01
+          Project: Vprofile
+          Owner: DevOps-Team
+        exact_count: 1
+      register: app01_out
+
+    # - debug:
+    #     var: app01_out
+
+    - name: Creating RabbitMQ rmq01
+      amazon.aws.ec2_instance:
+        name: "rmq01"
+        region: "{{region}}"
+        instance_type: t2.micro
+        image_id: "{{rmq_ami}}"
+        key_name: vprokey
+        security_group: "{{vproStackSG_out.group_id}}"
+        vpc_subnet_id: "{{privsub1id}}"
+        wait: yes
+        wait_timeout: 240
+        tags:
+          Name: rmq01
+          Project: Vprofile
+          Owner: DevOps-Team
+        exact_count: 1
+      register: rmq01_out
+
+    # - debug:
+    #     var: rmq01_out
+
+    - name: Creating MemCached mc01
+      amazon.aws.ec2_instance:
+        name: "mc01"
+        region: "{{region}}"
+        instance_type: t2.micro
+        image_id: "{{memcache_ami}}"
+        key_name: vprokey
+        security_group: "{{vproStackSG_out.group_id}}"
+        vpc_subnet_id: "{{privsub1id}}"
+        wait: yes
+        wait_timeout: 240
+        tags:
+          Name: mc01
+          Project: Vprofile
+          Owner: DevOps-Team
+        exact_count: 1
+      register: mc01_out
+
+    # - debug:
+    #     var: mc01_out
+
+    - name: Creating MySQL db01
+      amazon.aws.ec2_instance:
+        name: "db01"
+        region: "{{region}}"
+        instance_type: t2.micro
+        image_id: "{{mysql_ami}}"
+        key_name: vprokey
+        security_group: "{{vproStackSG_out.group_id}}"
+        vpc_subnet_id: "{{privsub1id}}"
+        wait: yes
+        wait_timeout: 240
+        tags:
+          Name: db01
+          Project: Vprofile
+          Owner: DevOps-Team
+        exact_count: 1
+      register: db01_out
+
+    #- debug:
+    #   var: db01_out
+
+
+    - name: Create ELB for the stack
+      amazon.aws.elb_classic_lb:
+        name: vprofile-elb
+        security_group_ids: "{{vproELBSG_out.group_id}}"
+        state: present
+        purge_instance_ids: true
+        region: "{{region}}"
+        subnets:
+          - "{{pubsub1id}}"
+          - "{{pubsub2id}}"
+          - "{{pubsub3id}}"
+        instance_ids:
+          - "{{web01_out.instance_ids[0]}}"
+        listeners:
+          - protocol: HTTP
+            load_balancer_port: 80
+            instance_port: 80
+
+    - name: Store IPs in a file
+      ansible.builtin.blockinfile:
+        path: provision-stack/group_vars/hostsip
+        block: |
+          web01_ip: {{web01_out.instances[0].network_interfaces[0].private_ip_address}}
+          app01_ip: {{app01_out.instances[0].network_interfaces[0].private_ip_address}}
+          rmq01_ip: {{rmq01_out.instances[0].network_interfaces[0].private_ip_address}}
+          mc01_ip: {{mc01_out.instances[0].network_interfaces[0].private_ip_address}}
+          db01_ip: {{db01_out.instances[0].network_interfaces[0].private_ip_address}}
+
+    - name: Copy login key to provision-stack/vprokey.pem
+      ansible.builtin.copy:
+        src: vprokey.pem
+        dest: provision-stack/vprokey.pem
+        mode: 0400
+
+    - name: Update Inventory File
+      ansible.builtin.blockinfile:
+        path: provision-stack/inventory-vpro
+        block: |
+          web01 ansible_host={{web01_out.instances[0].network_interfaces[0].private_ip_address}}
+          app01 ansible_host={{app01_out.instances[0].network_interfaces[0].private_ip_address}}
+          rmq01 ansible_host={{rmq01_out.instances[0].network_interfaces[0].private_ip_address}}
+          mc01 ansible_host={{mc01_out.instances[0].network_interfaces[0].private_ip_address}}
+          db01 ansible_host={{db01_out.instances[0].network_interfaces[0].private_ip_address}}
+          cnt ansible_host=127.0.0.1 ansible_connection=local
+
+          [websrvgrp]
+          web01
+
+          [appsrvgrp]
+          app01
+
+          [rmqsrvgrp]
+          rmq01
+
+          [mcsrvgrp]
+          mc01
+
+          [dbsrvgrp]
+          db01
+
+          [control]
+          cntl
+
+          [stack_inst:children]
+          websrvgrp
+          appsrvgrp
+          rmqsrvgrp
+          mcsrvgrp
+          dbsrvgrp
+
+          [stack_inst:vars]
+          ansible_user:ubuntu
+          ansible_ssh_private_key_file:vprokey.pem
+          #ansible_python_interpreter=/usr/bin/python3

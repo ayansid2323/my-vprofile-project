@@ -20,3 +20,7 @@ zone2: eu-central-1b
 zone3: eu-central-1c
 
 state: present
+
+# Bastion Vars
+bastion_ami: ami-0d318f1f104612755
+MYIP: 39.58.192.59/32

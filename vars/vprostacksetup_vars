@@ -1,0 +1,7 @@
+nginx_ami: ami-06dd92ecc74fdfb36
+tomcat_ami: ami-06dd92ecc74fdfb36
+memcache_ami: ami-06dd92ecc74fdfb36
+rmq_ami: ami-06dd92ecc74fdfb36
+mysql_ami: ami-06dd92ecc74fdfb36
+region: eu-central-1
+bastion_group_id: sg-0254b7aed56ea6939

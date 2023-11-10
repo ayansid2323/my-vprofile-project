@@ -5,10 +5,10 @@
   gather_facts: False
   tasks:
     - name: Import Bastion Variables
-      include_vars: vars/bastion-setup-variables
+      include_vars: vars/vpc-setup-variables
 
     - name: import VPC setup Variables
-      include_vars: vars/output_vars
+      include_vars: vars/vpc-output_vars
 
     - name: bastion ec2 key
       amazon.aws.ec2_key:
@@ -62,3 +62,10 @@
 
     - debug:
         var: bastionHost_out
+
+# Append Bastion Host SG Details to vpc-output_vars file 
+    - name: Append BastionSG Group ID to vpc-output_vars
+      ansible.builtin.blockinfile:
+        path: vars/vpc-output_vars
+        block: |
+          BastionSGid: {{BastionSG_out.group_id}}
