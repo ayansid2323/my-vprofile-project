@@ -63,5 +63,13 @@ pipeline {
             }
         }
 
+        stage( 'Quality Gate' ) {
+            steps {
+                timeout(5) {  // Will Timout after 5 Minutes
+                    waitForQualityGate abortPipeline: true 
+                }
+            }
+        }
+
     }
 }
