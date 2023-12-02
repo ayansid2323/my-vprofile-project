@@ -95,7 +95,7 @@ pipeline {
                 )
             }
         }
-        post {
+        stage( "Slack" ) {
             always {
                 echo 'Slack Notification'
                 slackSend(
