@@ -94,9 +94,7 @@ pipeline {
                     ]
                 )
             }
-        }
-        stage( "Slack" ) {
-            steps {
+            post {
                 always {
                     echo 'Slack Notification'
                     slackSend(
@@ -107,6 +105,6 @@ pipeline {
                 }
             }
         }
-
+        
     }
 }
