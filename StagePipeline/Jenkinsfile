@@ -23,7 +23,7 @@ pipeline {
         NEXUS_LOGIN = 'nexuslogin'
         SONARSERVER = 'sonarserver'
         SONARSCANNER = 'sonarscanner'
-        registryCredential = 'ecr:eu-central-1:awscreds'
+        registryCredential = 'awscreds'
         appRegistry = '363942173272.dkr.ecr.eu-central-1.amazonaws.com/vprofileappimg'
         vprofileRegistry = "https://363942173272.dkr.ecr.eu-central-1.amazonaws.com"
     }
