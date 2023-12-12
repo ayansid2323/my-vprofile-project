@@ -110,8 +110,8 @@ pipeline {
         stage( 'Upload App Image' ) {
             steps {
                 script {
-                    sh "docker tag vprofileappimg:$BUILD_NUMBER 363942173272.dkr.ecr.eu-central-1.amazonaws.com/vprofileappimg:$BUILD_NUMBER"
-                    sh "docker push 363942173272.dkr.ecr.eu-central-1.amazonaws.com/vprofileappimg:$BUILD_NUMBER"
+                    sh "docker tag vprofileappimg:latest 363942173272.dkr.ecr.eu-central-1.amazonaws.com/vprofileappimg:latest"
+                    sh "docker push 363942173272.dkr.ecr.eu-central-1.amazonaws.com/vprofileappimg:latest"
                     }
                 }
             }
