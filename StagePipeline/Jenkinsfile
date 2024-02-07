@@ -111,7 +111,8 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry("https://363942173272.dkr.ecr.eu-central-1.amazonaws.com/vprofileappimg", "ecr:eu-central-1:awscreds") {
-                        dockerImage.push("vprofileappimg")                     
+                        dockerImage.push("$BUILD_NUMBER")
+                        dockerImage.push('latest')                   
                     }
                 }
             }
