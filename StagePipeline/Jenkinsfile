@@ -111,7 +111,7 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry("363942173272.dkr.ecr.eu-central-1.amazonaws.com/vprofileappimg", "ecr:eu-central-1:awscreds") {
-                        docker.image("vprofileappimg").push()                        
+                        dockerImage.push("vprofileappimg")                     
                     }
                 }
             }
