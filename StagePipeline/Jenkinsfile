@@ -17,7 +17,7 @@ pipeline {
 		NEXUS_PASS = 'admin123'
 		RELEASE_REPO = 'vprofile-release'
 		CENTRAL_REPO = 'vpro-maven-central'
-		NEXUSIP = '192.168.56.13'
+		NEXUSIP = '192.168.1.102'
 		NEXUSPORT = '8081'
 		NEXUS_GRP_REPO = 'vpro-maven-group'
         NEXUS_LOGIN = 'nexuslogin'
@@ -25,7 +25,7 @@ pipeline {
         SONARSCANNER = 'sonarscanner'
         registryCredential = 'ecr:eu-central-1:awscreds'
         appRegistry = '363942173272.dkr.ecr.eu-central-1.amazonaws.com/vprofileappimg'
-        vprofileRegistry = "https://363942173272.dkr.ecr.eu-central-1.amazonaws.com"
+        vprofileRegistry = '363942173272.dkr.ecr.eu-central-1.amazonaws.com'
     }
 
     stages {
@@ -109,15 +109,14 @@ pipeline {
 
         stage( 'Upload App Image' ) {
             steps {
-                script {
-                    sh "docker tag vprofileappimg:latest 363942173272.dkr.ecr.eu-central-1.amazonaws.com/vprofileappimg:latest"
-                    sh "docker push 363942173272.dkr.ecr.eu-central-1.amazonaws.com/vprofileappimg:latest"
-                    }
+                docker.withRegistry(vprofileRegistry, registryCredential) {
+                    docker.image("vprofileappimg").push()                        
                 }
             }
         }
-
     }
+
+}
     
     post {
         always {
